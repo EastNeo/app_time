@@ -1,0 +1,300 @@
+/*================================================================
+*   Copyright (C) 2021 Sangfor Ltd. All rights reserved.
+*   
+*   文件名称：appointment_handle.cpp
+*   创 建 者：Bai Xiaodong
+*   创建日期：2021年02月25日
+*   描    述：
+*
+================================================================*/
+
+
+#include <algorithm>
+#include <sys/prctl.h>
+#include <sys/ipc.h>
+#include <sys/msg.h>
+#include "appointment_monitor.h"
+
+
+int MQ1_ID;
+Clock_Handle* Clock_Handle::instance = NULL;
+std::once_flag Clock_Handle::oc_;
+
+
+//从数据库读取预约时间列表
+void Clock_Handle::read_ap_data_from_db()
+{
+    std::cout << "init" << std::endl;
+    
+    if(sql->isTableExist(ap_table_name, db)){
+        apTimeList.clear();
+        sql->sqlite3_select_data<ap_t>(ap_table_name, apTimeList, db);
+    }
+
+    for(auto it : apTimeList)
+    {
+        std::cout << "time: " << hex << it.time_exce << std::endl;
+    }
+}
+
+//从数据库读取勿扰时间列表
+void Clock_Handle::read_dtb_data_from_db()
+{
+    std::cout << "init" << std::endl;
+    
+    if(sql->isTableExist(dtb_table_name, db)){
+        std::lock_guard<std::mutex> lck(dtb_mut);
+        dtbTimeList.clear();
+        sql->sqlite3_select_data<dtb_t>(dtb_table_name, dtbTimeList, db);
+    }
+
+    for(auto it : dtbTimeList)
+    {
+        std::cout << "time: " << it.start_time << std::endl;
+    }
+}
+
+//监控线程
+void Clock_Handle::clock_monitor_thread()
+{
+    std::cout << "monitor thread start" << std::endl;
+    //设置线程名称，获取线程id
+    prctl(PR_SET_NAME, "bv_appointment_monitor");
+    pthread_t tid = gettid();
+
+    sql = sqlite3Handle::getInstance();
+
+    db = sql->sqlite3_open_db(db_path);
+
+    //将数据库中的数据读取到内存中
+    read_ap_data_from_db();
+
+    while(!g_exit_thread){
+        if(ap_flag)
+        {
+            std::lock_guard<std::mutex> lck(ap_mut);
+            write_ap_data_to_db();
+            ap_flag = false;
+        }
+        if(!apTimeList.empty())
+        {
+            clock_action();
+        }
+        
+        std::this_thread::sleep_for(std::chrono::milliseconds(5000));
+
+    }
+    sql->sqlite3_close_db(db);
+}
+
+//初始化消息队列
+bool Clock_Handle::initMsgQ()
+{
+    key_t key;
+
+    key = ftok("/work/tmp/app_bak/bin/", 1);
+    if(-1 == key)
+    {
+        std::cout << "ftok failed" << std::endl;
+        return false;
+    }
+
+    std::cout << "key: " << hex << key << std::endl;
+
+    MQ1_ID = msgget(key, IPC_CREAT|0644);
+
+    if(-1 == MQ1_ID)
+    {
+        std::cout << "init MQ1_ID failed!" << std::endl;
+        std::cout << "error msg: " << strerror(errno);
+        return false;
+    }
+    else
+    {
+        std::cout << "The MQ1_ID = " << MQ1_ID << std::endl;
+    }
+
+    return true;
+}
+
+//将手机所在时区的时间转换成扫地机所在时区的时间
+void Clock_Handle::change_time_local()
+{
+    int diff_zone = 0;
+    int hour = 0, min = 0;
+    //获取扫地机所在时区
+    int local_zone = get_time_zone();
+
+    auto it = apTimeFromServer.begin();
+
+    for(; it!=apTimeFromServer.end(); ++it){
+        //计算时区差
+        diff_zone = local_zone - it->time_zone;
+        //转换时间
+        hour = ((it->time_exce >> 8) & 0xFF) + diff_zone;
+        min = it->time_exce & 0xFF;
+        if(hour > 23)
+        {
+            hour -= 24;
+            //week转换
+        }
+        else if(hour < 0)
+        {
+            hour += 24;
+            //week转换
+        }
+        it->time_exce = (hour << 8) | min;
+    }
+}
+
+static bool compare(const ap_t ap1, const ap_t ap2)
+{
+    return ap1.time_exce < ap2.time_exce;
+}
+
+//将从服务器接收的预约时间队列按时间升序排列
+void Clock_Handle::sort_apTime()
+{
+    apTimeFromServer.sort(compare);
+}
+
+//将从服务器接收的预约时间队列存到数据库和内存中
+void Clock_Handle::write_ap_data_to_db()
+{
+    sort_apTime();
+    
+    sql->sqlite3_clear_data(ap_table_name, db);
+    sql->sqlite3_create_table(ap_table_name, db);
+    
+    list<ap_t> a2;
+    sql->sqlite3_select_data<ap_t>(ap_table_name, a2, db);
+    for(auto it : a2){
+        std::cout << "a2 time: " << it.time_exce << std::endl;
+    }
+    int i = 0;
+    for(auto it : apTimeFromServer){
+        std::cout << "ap time: " << it.time_exce << std::endl;;
+        sql->sqlite3_insert_data<ap_t>(ap_table_name, it, i++, db);
+    }
+    
+    list<ap_t> a1;
+    sql->sqlite3_select_data<ap_t>(ap_table_name, a1, db);
+    for(auto it : a1){
+        std::cout << "a1 time: " << it.time_exce << std::endl;
+    }
+    
+}
+
+//将从服务器接收的勿扰时间队列存到数据库和内存中
+void Clock_Handle::write_dtb_data_to_db()
+{
+    sqlite3* db = NULL;
+    sort_apTime();
+    sqlite3Handle* sql = sqlite3Handle::getInstance();
+    
+    db = sql->sqlite3_open_db(db_path);
+    sql->sqlite3_delete_table(dtb_table_name, db);
+    sql->sqlite3_create_table(dtb_table_name, db);
+    int i = 0;
+    for(auto it : dtbTimeFromServer){
+        sql->sqlite3_insert_data<dtb_t>(dtb_table_name, it, i++, db);
+    }
+    sql->sqlite3_close_db(db);
+}
+
+//从服务器接受消息线程
+void Clock_Handle::read_from_server_thread()
+{    
+    std::cout << "read thread start" << std::endl;
+    //设置线程名称，获取线程id
+    prctl(PR_SET_NAME, "bv_read_clock");
+    pthread_t tid = gettid();
+
+    //初始化消息队列
+    while(!initMsgQ()){
+        std::this_thread::sleep_for(std::chrono::milliseconds(10000));
+    }
+
+    MsgData msgdata;
+
+    while(!g_exit_thread){
+        memset(&msgdata, 0, sizeof(msgdata));
+
+        std::cout << "waiting for message from MQ1_ID..." << std::endl;
+        auto len = msgrcv(MQ1_ID, &msgdata, sizeof(msgdata), 0x0L, 0);
+        
+        apTimeFromServer.clear();
+        for(int i = 0; i < msgdata.ap_count; ++i)
+        {
+            std::cout << "i: " << i << std::endl;
+            apTimeFromServer.push_back(msgdata.ap_l[i]);
+        }
+        /*
+        for(int i = 0; i < msgdata.dtb_count; ++i)
+        {
+            dtbTimeFromServer.push_back(msgdata.dtb_l[i]);
+        }
+        */
+        std::cout << "read msg end" << std::endl;
+        std::lock_guard<std::mutex> ap_lck(ap_mut);
+        apTimeList.clear();
+        apTimeList = apTimeFromServer;
+        ap_flag = true;
+        for(auto it : apTimeList)
+        {
+            std::cout << "time: " << hex << it.time_exce << std::endl;
+        }
+        //std::lock_guard<std::mutex> dtb_lck(dtb_mut);
+        //dtbTimeList.clear();
+        //dtbTimeList = dtbTimeFromServer;
+
+        //write_ap_data_to_db();
+        //write_dtb_data_to_db();
+    }
+}
+
+//判断是否到了预约时间
+void Clock_Handle::clock_action()
+{
+    std::cout << "action start" << std::endl;
+    time_t t1;
+    struct tm *tm_local;
+    
+    time(&t1);
+
+    tm_local = localtime(&t1);
+
+    auto it = apTimeList.begin();
+    for(; it != apTimeList.end(); ++it)
+    {
+        //判断本次预约是否有效
+        if(it->effect){
+            //判断是否到预约时间
+            if((((it->time_exce >> 8) & 0xFF) == tm_local->tm_hour) &&
+                    ((it->time_exce & 0xFF) == tm_local->tm_min))
+            {
+                //判断执行星期
+                //0x00 仅执行一次
+                if(it->week == 0x00)
+                {
+                    it->effect = false;
+                    std::cout << "exec once" << std::endl;
+                }
+                //判断是否是星期日
+                else if(((it->week >> (7-1)) & 1) && tm_local->tm_wday == 0)
+                {
+                    std::cout << "sunday exec" << std::endl;
+                }
+                //判断除星期日外的其他天数
+                else if(tm_local->tm_wday != 0)
+                {
+                    if((it->week >> (tm_local->tm_wday-1)) & 1)
+                    {
+                        std::cout << "week " << tm_local->tm_wday << " exec" << std::endl;
+                    }
+                }
+            }
+        }
+    }
+
+}
