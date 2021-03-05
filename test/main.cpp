@@ -64,6 +64,7 @@ int main(int argc, char** argv)
     _ap_t.time_zone = 0x03;
     _ap_t.time_exce = time;
 
+
     MsgData msgdata;
     memset(&msgdata, 0, sizeof(msgdata));
     msgdata.ap_count++;
@@ -77,6 +78,31 @@ int main(int argc, char** argv)
     ap1.time_exce = time;
     msgdata.ap_count++;
     memcpy(&msgdata.ap_l[1], &ap1, sizeof(ap1));
+    msgdata.ap_flag = true;
+
+    char c;
+    cout << "set dtb: ";
+    cin >> c;
+    if(c == 'y'){
+        dtb_t _dtb_t;
+        _dtb_t.time_zone = 0x00;
+        _dtb_t.start_day = 0x00;
+        _dtb_t.end_day = 0x00;
+        cout << "dtb start_time: ";
+        cin >> time;
+        _dtb_t.start_time = time;
+        cout << "dtb end_time: ";
+        cin >> time;
+        _dtb_t.end_time = time;
+
+        msgdata.dtb_count++;
+        memcpy(&msgdata.dtb_l[0], &_dtb_t, sizeof(_dtb_t));
+        msgdata.dtb_flag = true;
+    }
+    else
+    {
+        msgdata.dtb_flag = false;
+    }
 
     int count = 1;
     while(count){

@@ -55,6 +55,10 @@ typedef struct DisturbTime{
 }dtb_t;
 
 struct MsgData{
+    bool ap_flag;
     int ap_count;
     ap_t ap_l[30];
+    bool dtb_flag;
+    int dtb_count;
+    dtb_t dtb_l[10];
 };

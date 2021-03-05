@@ -57,6 +57,7 @@ bool Clock_Handle::read_data_from_db(TbEnum tb_enum)
                 dtbTimeList.clear();
                 sql->sqlite3_select_data<dtb_t>(dtb_table_name, dtbTimeList, db);
             }
+            break;
         default:
             std::cout << "read nothing" << std::endl;
             return false;
@@ -66,6 +67,10 @@ bool Clock_Handle::read_data_from_db(TbEnum tb_enum)
     for(auto it : apTimeList)
     {
         std::cout << "ap time: " << it.time_exce << std::endl;
+    }
+    for(auto it : dtbTimeList)
+    {
+        std::cout << "dtb time: " << it.start_time << " " << it.end_time << std::endl;
     }
     return true;
 }
@@ -83,7 +88,7 @@ void Clock_Handle::clock_monitor_thread()
     db = sql->sqlite3_open_db(db_path);
 
     //将数据库中的数据读取到内存中
-    read_data_from_db(TbEnum::KTbApp);
+    read_data_from_db(TbEnum::KTbBoth);
 
     while(!g_exit_thread){
         //预约时间队列改变，写入到数据库
@@ -205,7 +210,7 @@ void Clock_Handle::write_dtb_to_db()
     sql->sqlite3_create_table(dtb_table_name, db);
     int i = 0;
     for(auto it : dtbTimeFromServer){
-        std::cout << "dtb time: " << it.start_time << std::endl;;
+        std::cout << "dtb time: " << it.start_time << " " << std::endl;;
         sql->sqlite3_insert_data<dtb_t>(dtb_table_name, it, i++, db);
     }
 }
@@ -258,27 +263,38 @@ void Clock_Handle::read_from_server_thread()
         std::cout << "waiting for message from MQ1_ID..." << std::endl;
         auto len = msgrcv(MQ1_ID, &msgdata, sizeof(msgdata), 0x0L, 0);
         
-        apTimeFromServer.clear();
-        for(int i = 0; i < msgdata.ap_count; ++i)
-        {
-            std::cout << "i: " << i << std::endl;
-            apTimeFromServer.push_back(msgdata.ap_l[i]);
+        if(msgdata.ap_flag){
+            apTimeFromServer.clear();
+            for(int i = 0; i < msgdata.ap_count; ++i)
+            {
+                std::cout << "i: " << i << std::endl;
+                apTimeFromServer.push_back(msgdata.ap_l[i]);
+            }
+            std::lock_guard<std::mutex> ap_lck(ap_mut);
+            apTimeList.clear();
+            apTimeList = apTimeFromServer;
+            ap_flag = true;
+            for(auto it : apTimeList)
+            {
+                std::cout << "time: " << hex << it.time_exce << std::endl;
+            }
         }
-        /*
-        for(int i = 0; i < msgdata.dtb_count; ++i)
-        {
-            dtbTimeFromServer.push_back(msgdata.dtb_l[i]);
+        if(msgdata.dtb_flag){
+            for(int i = 0; i < msgdata.dtb_count; ++i)
+            {
+                dtbTimeFromServer.push_back(msgdata.dtb_l[i]);
+            }
+            std::lock_guard<std::mutex> dtb_lck(dtb_mut);
+            dtbTimeList.clear();
+            dtbTimeList = dtbTimeFromServer;
+            dtb_flag = true;
+            for(auto it : dtbTimeList)
+            {
+                std::cout << "time: " << hex << it.start_time << it.end_time << std::endl;
+            }
         }
-        */
+
         std::cout << "read msg end" << std::endl;
-        std::lock_guard<std::mutex> ap_lck(ap_mut);
-        apTimeList.clear();
-        apTimeList = apTimeFromServer;
-        ap_flag = true;
-        for(auto it : apTimeList)
-        {
-            std::cout << "time: " << hex << it.time_exce << std::endl;
-        }
     }
 }
 
