@@ -53,3 +53,7 @@ typedef struct DisturbTime{
     uint16_t end_time;
 }dtb_t;
 
+struct MsgData{
+    int ap_count;
+    ap_t ap_l[30];
+};

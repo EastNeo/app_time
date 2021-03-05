@@ -21,8 +21,6 @@ using namespace std;
 bool g_exit_thread = false;
 
 //const char* dbName = "/mnt/UDISK/test.db";
-const char* dbName = "/mnt/d/tmp/appointment/bin/test.db";
-const char* tableName = "APPOINTMENT";
 
 int main(int argc, char** argv)
 {

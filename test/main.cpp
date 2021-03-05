@@ -10,11 +10,13 @@
 
 
 #include <iostream>
+#include <cstdint>
 #include <chrono>
+#include <thread>
 #include <cstring>
 #include <sys/msg.h>
 #include <sys/ipc.h>
-#include "../src/appointment_monitor.h"
+#include "../src/appointment_struct.h"
 
 using namespace std;
 
@@ -24,7 +26,8 @@ int main(int argc, char** argv)
 {
     key_t key;
 
-    key = ftok("/work/tmp/app_bak/bin/", 1);
+    //key = ftok("/work/tmp/app_bak/bin/", 1);
+    key = ftok("/mnt/", 1);
     if(-1 == key)
     {
         cout << "key failed" << endl;
@@ -79,7 +82,7 @@ int main(int argc, char** argv)
     while(count){
         cout << "msg send" << endl;
         msgsnd(MQ1_ID, &msgdata, sizeof(msgdata), IPC_NOWAIT);
-        std::this_thread::sleep_for(chrono::milliseconds(10000));
+        std::this_thread::sleep_for(std::chrono::milliseconds(5000));
         count--;
     }
 

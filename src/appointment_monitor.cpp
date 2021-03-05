@@ -101,7 +101,7 @@ void Clock_Handle::clock_monitor_thread()
 
         if(!apTimeList.empty())
         {
-            clock_action();
+            ap_clock_action();
         }
         
         std::this_thread::sleep_for(std::chrono::milliseconds(5000));
@@ -115,7 +115,8 @@ bool Clock_Handle::initMsgQ()
 {
     key_t key;
 
-    key = ftok("/work/tmp/app_bak/bin/", 1);
+    //key = ftok("/work/tmp/app_bak/bin/", 1);
+    key = ftok("/mnt/", 1);
     if(-1 == key)
     {
         std::cout << "ftok failed" << std::endl;
@@ -278,7 +279,7 @@ void Clock_Handle::read_from_server_thread()
 }
 
 //判断是否到了预约时间
-void Clock_Handle::clock_action()
+void Clock_Handle::ap_clock_action()
 {
     std::cout << "action start" << std::endl;
     time_t t1;
