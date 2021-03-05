@@ -78,9 +78,8 @@ private:
     static std::once_flag oc_;
     sqlite3Handle* sql;
     sqlite3* db;
-    const std::string db_path = "/mnt/UDISK/test.db";
-    //const char* db_path = "/mnt/d/tmp/appointment/bin/test.db";
-    //const std::string db_path = "/work/tmp/app_time/bin/test.db";
+    //const std::string db_path = "/mnt/UDISK/test.db";
+    const std::string db_path = "/work/tmp/app_time/bin/test.db";
     const std::string ap_table_name = "APPOINTMENT";
     const std::string dtb_table_name = "DISTURB";
 

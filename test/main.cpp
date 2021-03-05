@@ -56,7 +56,7 @@ int main(int argc, char** argv)
     _ap_t.effect = true;
     _ap_t.fan_level = 0x01;
     _ap_t.water_level = 0x00;
-    _ap_t.week = 0x01;
+    _ap_t.week = 0x00;
     _ap_t.numbers = 2;
     _ap_t.room_id[0] = 1;
     _ap_t.room_id[1] = 2;
