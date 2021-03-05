@@ -46,7 +46,8 @@ typedef struct DisturbTime{
     //手机系统时区
     uint8_t time_zone;
     //表示当天或者第二天，00当天，01第二天，目前未使用，直接置00
-    uint8_t day;
+    uint8_t start_day;
+    uint8_t end_day;
     //勿扰定时开始时间
     uint16_t start_time;
     //勿扰定时结束时间

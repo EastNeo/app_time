@@ -58,6 +58,7 @@ public:
     bool write_data_to_db(TbEnum tb_enum);
     void read_from_server_thread();
 
+    bool dtb_clock_action();
     void ap_clock_action();
     int get_time_zone() const
     {

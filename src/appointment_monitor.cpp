@@ -86,12 +86,14 @@ void Clock_Handle::clock_monitor_thread()
     read_data_from_db(TbEnum::KTbApp);
 
     while(!g_exit_thread){
+        //预约时间队列改变，写入到数据库
         if(ap_flag)
         {
             std::lock_guard<std::mutex> lck(ap_mut);
             write_data_to_db(TbEnum::KTbApp);
             ap_flag = false;
         }
+        //勿扰时间队列改变，写入到数据库
         if(dtb_flag)
         {
             std::lock_guard<std::mutex> lck(dtb_mut);
@@ -99,7 +101,8 @@ void Clock_Handle::clock_monitor_thread()
             dtb_flag = false;
         }
 
-        if(!apTimeList.empty())
+        //判断勿扰模式是否开启，预约时间列表是否为空
+        if(!dtb_clock_action() && !apTimeList.empty())
         {
             ap_clock_action();
         }
@@ -279,10 +282,47 @@ void Clock_Handle::read_from_server_thread()
     }
 }
 
+//判断是否在勿扰时间段内
+bool Clock_Handle::dtb_clock_action()
+{
+    std::cout << "dtb action start" << std::endl;
+
+    bool dtb_action = false;
+    time_t t1;
+    struct tm *tm_local;
+
+    time(&t1);
+    tm_local = localtime(&t1);
+    uint16_t cur_time = (tm_local->tm_hour << 8) | tm_local->tm_min;
+
+    auto it = dtbTimeList.begin();
+    for(; it != dtbTimeList.end(); ++it)
+    {
+        //勿扰时间段在同一天内
+        if(it->start_time < it->end_time)
+        {
+            if((cur_time >= it->start_time) && (cur_time <= it->end_time))
+                dtb_action = true;
+            else
+                dtb_action = false;
+        }
+        //勿扰结束时间在第二天
+        else
+        {
+            if((cur_time >= it->start_time) && (cur_time <= (it->end_time + (24 << 8))))
+                dtb_action = true;
+            else
+                dtb_action = false;
+        }
+    }
+
+    return dtb_action;
+}
+
 //判断是否到了预约时间
 void Clock_Handle::ap_clock_action()
 {
-    std::cout << "action start" << std::endl;
+    std::cout << "ap action start" << std::endl;
     time_t t1;
     struct tm *tm_local;
     
