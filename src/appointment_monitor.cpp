@@ -21,23 +21,7 @@ Clock_Handle* Clock_Handle::instance = NULL;
 std::once_flag Clock_Handle::oc_;
 
 
-//从数据库读取预约时间列表
-void Clock_Handle::read_ap_data_from_db()
-{
-    std::cout << "init" << std::endl;
-    
-    if(sql->isTableExist(ap_table_name, db)){
-        apTimeList.clear();
-        sql->sqlite3_select_data<ap_t>(ap_table_name, apTimeList, db);
-    }
-
-    for(auto it : apTimeList)
-    {
-        std::cout << "time: " << hex << it.time_exce << std::endl;
-    }
-}
-
-//从数据库读取勿扰时间列表
+//从数据库读取时间列表
 bool Clock_Handle::read_data_from_db(TbEnum tb_enum)
 {
     std::cout << "read_data_from_db" << std::endl;
@@ -197,32 +181,6 @@ void Clock_Handle::sort_apTime()
     apTimeFromServer.sort(compare);
 }
 
-//将从服务器接收的预约时间队列存到数据库和内存中
-void Clock_Handle::write_ap_data_to_db()
-{
-    sort_apTime();
-    
-    sql->sqlite3_clear_data(ap_table_name, db);
-    sql->sqlite3_create_table(ap_table_name, db);
-    
-    list<ap_t> a2;
-    sql->sqlite3_select_data<ap_t>(ap_table_name, a2, db);
-    for(auto it : a2){
-        std::cout << "a2 time: " << it.time_exce << std::endl;
-    }
-    int i = 0;
-    for(auto it : apTimeFromServer){
-        std::cout << "ap time: " << it.time_exce << std::endl;;
-        sql->sqlite3_insert_data<ap_t>(ap_table_name, it, i++, db);
-    }
-    
-    list<ap_t> a1;
-    sql->sqlite3_select_data<ap_t>(ap_table_name, a1, db);
-    for(auto it : a1){
-        std::cout << "a1 time: " << it.time_exce << std::endl;
-    }
-    
-}
 
 void Clock_Handle::write_ap_to_db()
 {
@@ -246,7 +204,7 @@ void Clock_Handle::write_dtb_to_db()
         }
 }
 
-//将从服务器接收的勿扰时间队列存到数据库和内存中
+//将从服务器接收的时间队列存到数据库和内存中
 bool Clock_Handle::write_data_to_db(TbEnum tb_enum)
 {
     sort_apTime();

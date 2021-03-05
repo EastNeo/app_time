@@ -52,13 +52,11 @@ public:
         return instance;
     }
 
-    void read_ap_data_from_db();
     bool read_data_from_db(TbEnum tb_enum);
     void clock_monitor_thread();
     bool initMsgQ();
     void change_time_local();
     void sort_apTime();
-    void write_ap_data_to_db();
     void write_ap_to_db();
     void write_dtb_to_db();
     bool write_data_to_db(TbEnum tb_enum);
