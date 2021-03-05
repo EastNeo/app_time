@@ -1,2 +1,0 @@
-/usr/bin/ar qc ../../lib/libbvsqlite.a  CMakeFiles/bvsqlite.dir/shell.c.o CMakeFiles/bvsqlite.dir/sqlite3.c.o
-/usr/bin/ranlib ../../lib/libbvsqlite.a
