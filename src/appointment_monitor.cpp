@@ -171,44 +171,45 @@ void Clock_Handle::change_time_local()
     }
 }
 
-static bool compare(const ap_t ap1, const ap_t ap2)
+static bool ap_compare(const ap_t ap1, const ap_t ap2)
 {
     return ap1.time_exce < ap2.time_exce;
 }
 
+
 //将从服务器接收的预约时间队列按时间升序排列
 void Clock_Handle::sort_apTime()
 {
-    apTimeFromServer.sort(compare);
+    apTimeFromServer.sort(ap_compare);
 }
 
 
 void Clock_Handle::write_ap_to_db()
 {
-        sql->sqlite3_clear_data(ap_table_name, db);
-        sql->sqlite3_create_table(ap_table_name, db);
-        int i = 0;
-        for(auto it : apTimeFromServer){
-            std::cout << "ap time: " << it.time_exce << std::endl;;
-            sql->sqlite3_insert_data<ap_t>(ap_table_name, it, i++, db);
-        }
+    sort_apTime();
+    sql->sqlite3_clear_data(ap_table_name, db);
+    sql->sqlite3_create_table(ap_table_name, db);
+    int i = 0;
+    for(auto it : apTimeFromServer){
+        std::cout << "ap time: " << it.time_exce << std::endl;;
+        sql->sqlite3_insert_data<ap_t>(ap_table_name, it, i++, db);
+    }
 }
 
 void Clock_Handle::write_dtb_to_db()
 {
-        sql->sqlite3_clear_data(dtb_table_name, db);
-        sql->sqlite3_create_table(dtb_table_name, db);
-        int i = 0;
-        for(auto it : dtbTimeFromServer){
-            std::cout << "dtb time: " << it.start_time << std::endl;;
-            sql->sqlite3_insert_data<dtb_t>(dtb_table_name, it, i++, db);
-        }
+    sql->sqlite3_clear_data(dtb_table_name, db);
+    sql->sqlite3_create_table(dtb_table_name, db);
+    int i = 0;
+    for(auto it : dtbTimeFromServer){
+        std::cout << "dtb time: " << it.start_time << std::endl;;
+        sql->sqlite3_insert_data<dtb_t>(dtb_table_name, it, i++, db);
+    }
 }
 
 //将从服务器接收的时间队列存到数据库和内存中
 bool Clock_Handle::write_data_to_db(TbEnum tb_enum)
 {
-    sort_apTime();
     if(tb_enum >= +TbEnum::KTbMax || tb_enum <= +TbEnum::KTbMin)
     {
         std::cout << "no table" << std::endl;
@@ -288,6 +289,7 @@ void Clock_Handle::ap_clock_action()
     time(&t1);
 
     tm_local = localtime(&t1);
+    uint16_t cur_time = (tm_local->tm_hour << 8) | tm_local->tm_min;
 
     auto it = apTimeList.begin();
     for(; it != apTimeList.end(); ++it)
@@ -295,8 +297,7 @@ void Clock_Handle::ap_clock_action()
         //判断本次预约是否有效
         if(it->effect){
             //判断是否到预约时间
-            if((((it->time_exce >> 8) & 0xFF) == tm_local->tm_hour) &&
-                    ((it->time_exce & 0xFF) == tm_local->tm_min))
+            if(cur_time == it->time_exce)
             {
                 //判断执行星期
                 //0x00 仅执行一次
@@ -306,14 +307,14 @@ void Clock_Handle::ap_clock_action()
                     std::cout << "exec once" << std::endl;
                 }
                 //判断是否是星期日
-                else if(((it->week >> (7-1)) & 1) && tm_local->tm_wday == 0)
+                else if(((it->week >> (7-1)) & 0x1) && tm_local->tm_wday == 0)
                 {
                     std::cout << "sunday exec" << std::endl;
                 }
                 //判断除星期日外的其他天数
                 else if(tm_local->tm_wday != 0)
                 {
-                    if((it->week >> (tm_local->tm_wday-1)) & 1)
+                    if((it->week >> (tm_local->tm_wday-1)) & 0x1)
                     {
                         std::cout << "week " << tm_local->tm_wday << " exec" << std::endl;
                     }
