@@ -6,5 +6,5 @@ CXX_FLAGS =   -std=gnu++11
 
 CXX_DEFINES = 
 
-CXX_INCLUDES = -I/work/tmp/app_bak/build/src -I/work/tmp/app_bak/src -I/work/tmp/app_bak/third_party/bv_sqlite3 
+CXX_INCLUDES = -I/work/tmp/app_time/build/src -I/work/tmp/app_time/src -I/work/tmp/app_time/third_party/bv_sqlite3 
 

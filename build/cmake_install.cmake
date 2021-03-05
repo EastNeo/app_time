@@ -1,4 +1,4 @@
-# Install script for directory: /work/tmp/app_bak
+# Install script for directory: /work/tmp/app_time
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -39,8 +39,8 @@ endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for each subdirectory.
-  include("/work/tmp/app_bak/build/src/cmake_install.cmake")
-  include("/work/tmp/app_bak/build/third_party/bv_sqlite3/cmake_install.cmake")
+  include("/work/tmp/app_time/build/src/cmake_install.cmake")
+  include("/work/tmp/app_time/build/third_party/bv_sqlite3/cmake_install.cmake")
 
 endif()
 
@@ -52,5 +52,5 @@ endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
-file(WRITE "/work/tmp/app_bak/build/${CMAKE_INSTALL_MANIFEST}"
+file(WRITE "/work/tmp/app_time/build/${CMAKE_INSTALL_MANIFEST}"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")

@@ -1,4 +1,4 @@
-# Install script for directory: /work/tmp/app_bak/third_party/bv_sqlite3
+# Install script for directory: /work/tmp/app_time/third_party/bv_sqlite3
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)

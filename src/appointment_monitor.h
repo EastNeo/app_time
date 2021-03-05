@@ -28,6 +28,13 @@
 extern bool g_exit_thread;
 extern int MQ1_ID;
 
+enum TbEnum{
+    KTbMin = -1,
+    KTbApp,
+    KTbDtb,
+    KTbBoth,
+    KTbMax
+};
 
 struct MsgData{
     int ap_count;
@@ -46,13 +53,15 @@ public:
     }
 
     void read_ap_data_from_db();
-    void read_dtb_data_from_db();
+    bool read_data_from_db(TbEnum tb_enum);
     void clock_monitor_thread();
     bool initMsgQ();
     void change_time_local();
     void sort_apTime();
     void write_ap_data_to_db();
-    void write_dtb_data_to_db();
+    void write_ap_to_db();
+    void write_dtb_to_db();
+    bool write_data_to_db(TbEnum tb_enum);
     void read_from_server_thread();
 
     void clock_action();
@@ -77,7 +86,7 @@ private:
     sqlite3* db;
     //const std::string db_path = "/mnt/UDISK/test.db";
     //const char* db_path = "/mnt/d/tmp/appointment/bin/test.db";
-    const std::string db_path = "/work/tmp/app_bak/bin/test.db";
+    const std::string db_path = "/work/tmp/app_time/bin/test.db";
     const std::string ap_table_name = "APPOINTMENT";
     const std::string dtb_table_name = "DISTURB";
 
@@ -88,4 +97,5 @@ private:
     std::mutex dtb_mut;
     std::list<dtb_t> dtbTimeList;
     std::list<dtb_t> dtbTimeFromServer;
+    bool dtb_flag = false;
 };

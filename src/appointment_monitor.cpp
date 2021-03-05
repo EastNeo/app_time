@@ -38,20 +38,52 @@ void Clock_Handle::read_ap_data_from_db()
 }
 
 //从数据库读取勿扰时间列表
-void Clock_Handle::read_dtb_data_from_db()
+bool Clock_Handle::read_data_from_db(TbEnum tb_enum)
 {
-    std::cout << "init" << std::endl;
-    
-    if(sql->isTableExist(dtb_table_name, db)){
-        std::lock_guard<std::mutex> lck(dtb_mut);
-        dtbTimeList.clear();
-        sql->sqlite3_select_data<dtb_t>(dtb_table_name, dtbTimeList, db);
+    std::cout << "read_data_from_db" << std::endl;
+    if(tb_enum >= +TbEnum::KTbMax || tb_enum <= +TbEnum::KTbMin)
+    {
+        std::cout << "no table" << std::endl;
+        return false;
     }
 
-    for(auto it : dtbTimeList)
-    {
-        std::cout << "time: " << it.start_time << std::endl;
+    switch(tb_enum){
+        case KTbApp:
+            if(sql->isTableExist(ap_table_name, db)){
+                std::lock_guard<std::mutex> lck(ap_mut);
+                apTimeList.clear();
+                sql->sqlite3_select_data<ap_t>(ap_table_name, apTimeList, db);
+            }
+            break;
+        case KTbDtb:
+            if(sql->isTableExist(dtb_table_name, db)){
+                std::lock_guard<std::mutex> lck(dtb_mut);
+                dtbTimeList.clear();
+                sql->sqlite3_select_data<dtb_t>(dtb_table_name, dtbTimeList, db);
+            }
+            break;
+        case KTbBoth:
+            if(sql->isTableExist(ap_table_name, db)){
+                std::lock_guard<std::mutex> lck(ap_mut);
+                apTimeList.clear();
+                sql->sqlite3_select_data<ap_t>(ap_table_name, apTimeList, db);
+            }
+            if(sql->isTableExist(dtb_table_name, db)){
+                std::lock_guard<std::mutex> lck(dtb_mut);
+                dtbTimeList.clear();
+                sql->sqlite3_select_data<dtb_t>(dtb_table_name, dtbTimeList, db);
+            }
+        default:
+            std::cout << "read nothing" << std::endl;
+            return false;
     }
+
+
+    for(auto it : apTimeList)
+    {
+        std::cout << "ap time: " << it.time_exce << std::endl;
+    }
+    return true;
 }
 
 //监控线程
@@ -67,15 +99,22 @@ void Clock_Handle::clock_monitor_thread()
     db = sql->sqlite3_open_db(db_path);
 
     //将数据库中的数据读取到内存中
-    read_ap_data_from_db();
+    read_data_from_db(TbEnum::KTbApp);
 
     while(!g_exit_thread){
         if(ap_flag)
         {
             std::lock_guard<std::mutex> lck(ap_mut);
-            write_ap_data_to_db();
+            write_data_to_db(TbEnum::KTbApp);
             ap_flag = false;
         }
+        if(dtb_flag)
+        {
+            std::lock_guard<std::mutex> lck(dtb_mut);
+            write_data_to_db(TbEnum::KTbDtb);
+            dtb_flag = false;
+        }
+
         if(!apTimeList.empty())
         {
             clock_action();
@@ -185,21 +224,54 @@ void Clock_Handle::write_ap_data_to_db()
     
 }
 
-//将从服务器接收的勿扰时间队列存到数据库和内存中
-void Clock_Handle::write_dtb_data_to_db()
+void Clock_Handle::write_ap_to_db()
 {
-    sqlite3* db = NULL;
+        sql->sqlite3_clear_data(ap_table_name, db);
+        sql->sqlite3_create_table(ap_table_name, db);
+        int i = 0;
+        for(auto it : apTimeFromServer){
+            std::cout << "ap time: " << it.time_exce << std::endl;;
+            sql->sqlite3_insert_data<ap_t>(ap_table_name, it, i++, db);
+        }
+}
+
+void Clock_Handle::write_dtb_to_db()
+{
+        sql->sqlite3_clear_data(dtb_table_name, db);
+        sql->sqlite3_create_table(dtb_table_name, db);
+        int i = 0;
+        for(auto it : dtbTimeFromServer){
+            std::cout << "dtb time: " << it.start_time << std::endl;;
+            sql->sqlite3_insert_data<dtb_t>(dtb_table_name, it, i++, db);
+        }
+}
+
+//将从服务器接收的勿扰时间队列存到数据库和内存中
+bool Clock_Handle::write_data_to_db(TbEnum tb_enum)
+{
     sort_apTime();
-    sqlite3Handle* sql = sqlite3Handle::getInstance();
-    
-    db = sql->sqlite3_open_db(db_path);
-    sql->sqlite3_delete_table(dtb_table_name, db);
-    sql->sqlite3_create_table(dtb_table_name, db);
-    int i = 0;
-    for(auto it : dtbTimeFromServer){
-        sql->sqlite3_insert_data<dtb_t>(dtb_table_name, it, i++, db);
+    if(tb_enum >= +TbEnum::KTbMax || tb_enum <= +TbEnum::KTbMin)
+    {
+        std::cout << "no table" << std::endl;
+        return false;
     }
-    sql->sqlite3_close_db(db);
+    
+    switch(tb_enum){
+        case KTbApp:
+            write_ap_to_db();
+            break;
+        case KTbDtb:
+            write_dtb_to_db();
+            break;
+        case KTbBoth:
+            write_ap_to_db();
+            write_dtb_to_db();
+            break;
+        default:
+            std::cout << "write nothing" << std::endl;
+            return false;
+    }
+    return true;
 }
 
 //从服务器接受消息线程
@@ -244,12 +316,6 @@ void Clock_Handle::read_from_server_thread()
         {
             std::cout << "time: " << hex << it.time_exce << std::endl;
         }
-        //std::lock_guard<std::mutex> dtb_lck(dtb_mut);
-        //dtbTimeList.clear();
-        //dtbTimeList = dtbTimeFromServer;
-
-        //write_ap_data_to_db();
-        //write_dtb_data_to_db();
     }
 }
 

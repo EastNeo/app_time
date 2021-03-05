@@ -6,5 +6,5 @@ C_FLAGS =
 
 C_DEFINES = 
 
-C_INCLUDES = -I/work/tmp/app_bak/build/third_party/bv_sqlite3 -I/work/tmp/app_bak/third_party/bv_sqlite3 
+C_INCLUDES = -I/work/tmp/app_time/build/third_party/bv_sqlite3 -I/work/tmp/app_time/third_party/bv_sqlite3 
 

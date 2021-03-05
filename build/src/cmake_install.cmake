@@ -1,4 +1,4 @@
-# Install script for directory: /work/tmp/app_bak/src
+# Install script for directory: /work/tmp/app_time/src
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
