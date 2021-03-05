@@ -84,7 +84,7 @@ bool sqlite3Handle::sqlite3_create_table(const std::string tableName, sqlite3* d
     char sql[1000];
     int rc;
 
-    std::sprintf(sql, "CREATE TABLE %s(ID INT PRIMARY KEY NOT NULL, APPOINTMENT BLOB);", tableName.c_str());
+    std::sprintf(sql, "CREATE TABLE %s(ID INT PRIMARY KEY NOT NULL, DATA BLOB);", tableName.c_str());
     rc = sqlite3_exec(db, sql, 0, 0, &zErrMsg);
     if(SQLITE_OK != rc)
     {
@@ -131,20 +131,6 @@ bool sqlite3Handle::sqlite3_clear_data(const std::string tableName, sqlite3* db)
         sqlite3_free(zErrMsg);
         return false;
     }
-    /*
-    sqlite3_stmt* stmt = NULL;
-    rc = sqlite3_prepare(db, sql, strlen(sql), &stmt, 0);
-    if(SQLITE_OK != rc)
-    {
-        if(stmt)
-        {
-            sqlite3_finalize(stmt);
-            std::cout << "clear data failed" << std::endl;
-            return false;
-        }
-    }
-    sqlite3_finalize(stmt);
-    */
     return true;
 }
 
