@@ -94,6 +94,13 @@ int main(int argc, char** argv)
         cout << "dtb end_time: ";
         cin >> time;
         _dtb_t.end_time = time;
+        char effect = 'n';
+        cout << "dtb effect default n (y/n): ";
+        cin >> effect;
+        if(effect == 'y')
+            _dtb_t.effect = true;
+        else if(effect == 'n')
+            _dtb_t.effect = false;
 
         msgdata.dtb_count++;
         memcpy(&msgdata.dtb_l[0], &_dtb_t, sizeof(_dtb_t));
@@ -103,6 +110,7 @@ int main(int argc, char** argv)
     {
         msgdata.dtb_flag = false;
     }
+    
 
     int count = 1;
     while(count){
