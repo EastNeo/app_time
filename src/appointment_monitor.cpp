@@ -157,14 +157,12 @@ void Clock_Handle::change_time_local()
     //获取扫地机所在时区
     int local_zone = get_time_zone();
 
-    auto it = apTimeFromServer.begin();
-
-    for(; it!=apTimeFromServer.end(); ++it){
+    for(auto &it : apTimeFromServer){
         //计算时区差
-        diff_zone = local_zone - it->time_zone;
+        diff_zone = local_zone - it.time_zone;
         //转换时间
-        hour = ((it->time_exce >> 8) & 0xFF) + diff_zone;
-        min = it->time_exce & 0xFF;
+        hour = ((it.time_exce >> 8) & 0xFF) + diff_zone;
+        min = it.time_exce & 0xFF;
         if(hour > 23)
         {
             hour -= 24;
@@ -175,7 +173,7 @@ void Clock_Handle::change_time_local()
             hour += 24;
             //week转换
         }
-        it->time_exce = (hour << 8) | min;
+        it.time_exce = (hour << 8) | min;
     }
 }
 
@@ -311,24 +309,27 @@ bool Clock_Handle::dtb_clock_action()
     tm_local = localtime(&t1);
     uint16_t cur_time = (tm_local->tm_hour << 8) | tm_local->tm_min;
 
-    auto it = dtbTimeList.begin();
-    for(; it != dtbTimeList.end(); ++it)
+    for(auto &it : dtbTimeList)
     {
-        //勿扰时间段在同一天内
-        if(it->start_time < it->end_time)
+        //判断勿扰模式是否开启
+        if(it.effect)
         {
-            if((cur_time >= it->start_time) && (cur_time <= it->end_time))
-                dtb_action = true;
+            //勿扰时间段在同一天内
+            if(it.start_time < it.end_time)
+            {
+                if((cur_time >= it.start_time) && (cur_time <= it.end_time))
+                    dtb_action = true;
+                else
+                    dtb_action = false;
+            }
+            //勿扰结束时间在第二天
             else
-                dtb_action = false;
-        }
-        //勿扰结束时间在第二天
-        else
-        {
-            if((cur_time >= it->start_time) && (cur_time <= (it->end_time + (24 << 8))))
-                dtb_action = true;
-            else
-                dtb_action = false;
+            {
+                if((cur_time >= it.start_time) && (cur_time <= (it.end_time + (24 << 8))))
+                    dtb_action = true;
+                else
+                    dtb_action = false;
+            }
         }
     }
 
@@ -347,30 +348,29 @@ void Clock_Handle::ap_clock_action()
     tm_local = localtime(&t1);
     uint16_t cur_time = (tm_local->tm_hour << 8) | tm_local->tm_min;
 
-    auto it = apTimeList.begin();
-    for(; it != apTimeList.end(); ++it)
+    for(auto &it : apTimeList)
     {
         //判断本次预约是否有效
-        if(it->effect){
+        if(it.effect){
             //判断是否到预约时间
-            if(cur_time == it->time_exce)
+            if(cur_time == it.time_exce)
             {
                 //判断执行星期
                 //0x00 仅执行一次
-                if(it->week == 0x00)
+                if(it.week == 0x00)
                 {
-                    it->effect = false;
+                    it.effect = false;
                     std::cout << "exec once" << std::endl;
                 }
                 //判断是否是星期日
-                else if(((it->week >> (7-1)) & 0x1) && tm_local->tm_wday == 0)
+                else if(((it.week >> (7-1)) & 0x1) && tm_local->tm_wday == 0)
                 {
                     std::cout << "sunday exec" << std::endl;
                 }
                 //判断除星期日外的其他天数
                 else if(tm_local->tm_wday != 0)
                 {
-                    if((it->week >> (tm_local->tm_wday-1)) & 0x1)
+                    if((it.week >> (tm_local->tm_wday-1)) & 0x1)
                     {
                         std::cout << "week " << tm_local->tm_wday << " exec" << std::endl;
                     }

@@ -43,6 +43,8 @@ typedef struct AppintmentTime{
 
 //勿扰定时
 typedef struct DisturbTime{
+    //勿扰是否开启
+    bool effect;
     //手机系统时区
     uint8_t time_zone;
     //表示当天或者第二天，00当天，01第二天，目前未使用，直接置00
